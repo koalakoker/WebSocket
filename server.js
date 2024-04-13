@@ -1,19 +1,45 @@
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
+const { SerialPort } = require("serialport");
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+const serialPort = new SerialPort({ path: "COM1", baudRate: 9600 });
+
+let transmissionInterval;
+let stopTransmission = false;
+
+serialPort.on("open", function () {
+  console.log("Serial port opened");
+
+  // Start transmitting a single byte every 10ms
+  transmissionInterval = setInterval(() => {
+    if (!stopTransmission) {
+      serialPort.write(Buffer.from([0x01])); // Change the byte as per your requirement
+    }
+  }, 10);
+});
+
+serialPort.on("data", function (data) {
+  console.log("Received from serial port:", data.toString());
+  // Check if the received byte matches the specific byte to stop transmission
+  if (data[0] === 0xff) {
+    // Change the byte to match your specific condition
+    stopTransmission = true;
+    clearInterval(transmissionInterval); // Stop the transmission interval
+    console.log("Transmission stopped");
+  }
+});
+
 wss.on("connection", function connection(ws) {
   console.log("Client connected");
 
   ws.on("message", function incoming(message) {
-    console.log("Received: %s", message);
-    // You can implement serial communication logic here
-    // For now, just echo the received message back to the client
-    ws.send(`Echo: ${message}`);
+    console.log("Received from client:", message);
+    // You can implement additional logic here if needed
   });
 
   ws.on("close", function close() {
