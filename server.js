@@ -9,7 +9,7 @@ const wss = new WebSocket.Server({ server });
 
 const serialPort = new SerialPort({ path: "COM1", baudRate: 9600 });
 
-let SFP = [0x01];
+let SFP = [0xaa];
 let ACK = 0x55;
 
 let transmissionInterval;
