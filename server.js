@@ -9,6 +9,9 @@ const wss = new WebSocket.Server({ server });
 
 const serialPort = new SerialPort({ path: "COM1", baudRate: 9600 });
 
+let SFP = [0x01];
+let ACK = 0x55;
+
 let transmissionInterval;
 let stopTransmission = false;
 
@@ -18,7 +21,7 @@ serialPort.on("open", function () {
   // Start transmitting a single byte every 10ms
   transmissionInterval = setInterval(() => {
     if (!stopTransmission) {
-      serialPort.write(Buffer.from([0x01])); // Change the byte as per your requirement
+      serialPort.write(Buffer.from(SFP));
     }
   }, 10);
 });
@@ -26,10 +29,9 @@ serialPort.on("open", function () {
 serialPort.on("data", function (data) {
   console.log("Received from serial port:", data.toString());
   // Check if the received byte matches the specific byte to stop transmission
-  if (data[0] === 0xff) {
-    // Change the byte to match your specific condition
+  if (data[0] === ACK) {
     stopTransmission = true;
-    clearInterval(transmissionInterval); // Stop the transmission interval
+    clearInterval(transmissionInterval);
     console.log("Transmission stopped");
   }
 });
