@@ -7,7 +7,12 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const serialPort = new SerialPort({ path: "COM3", baudRate: 115200 });
+const portPath = process.argv[2];
+
+const serialPort = new SerialPort({
+  path: portPath,
+  baudRate: 115200,
+});
 
 let SFP = [0xaa];
 let ACK = 0x55;

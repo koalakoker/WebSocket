@@ -7,7 +7,7 @@ function enumerateSerialPorts() {
       console.log("Available serial ports:");
       ports.forEach((port) => {
         console.log(
-          `- ${port.path}: ${port.manufacturer || "Unknown manufacturer"}`
+          `"${port.path}": ${port.manufacturer || "Unknown manufacturer"}`
         );
       });
     })

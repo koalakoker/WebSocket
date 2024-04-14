@@ -27,6 +27,10 @@ socket.onopen = function () {
 socket.onmessage = function (event) {};
 
 function sendMessage() {
+  socket.send(createPacket());
+}
+
+function createPacket() {
   let ARR = 4000;
   let CountinMode = 1;
   let CCR1 = 1000;
@@ -35,22 +39,15 @@ function sendMessage() {
   let mode2 = 0;
   let CCR3 = 3000;
   let mode3 = 0;
-
-  let arrayBuffer = new ArrayBuffer(6); // 2 bytes for each 16-bit value and 1 byte for each 8-bit value
+  let arrayBuffer = new ArrayBuffer(12);
   let dataView = new DataView(arrayBuffer);
-  // Write the 16-bit values to the buffer
-  //dataView.setUint16(0, ARR, true); // Write ARR as a 16-bit little-endian integer at byte offset 0
-  //dataView.setUint16(2, CCR1, true); // Write CCR as a 16-bit little-endian integer at byte offset 2
-
-  // Write the 8-bit values to the buffer
-  //dataView.setUint8(4, mode1); // Write mode1 as an 8-bit integer at byte offset 4
-  //dataView.setUint8(5, mode2); // Write mode2 as an 8-bit integer at byte offset 5
-
-  // Convert the ArrayBuffer to a string
-  let bufferString = String.fromCharCode.apply(
-    null,
-    new Uint8Array(arrayBuffer)
-  );
-
-  socket.send(bufferString);
+  dataView.setUint16(0, ARR, true);
+  dataView.setUint8(2, CountinMode);
+  dataView.setUint16(3, CCR1, true);
+  dataView.setUint8(5, mode1);
+  dataView.setUint16(6, CCR2, true);
+  dataView.setUint8(8, mode2);
+  dataView.setUint16(9, CCR3, true);
+  dataView.setUint8(11, mode3);
+  return arrayBuffer;
 }
