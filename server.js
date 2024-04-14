@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const serialPort = new SerialPort({ path: "COM1", baudRate: 9600 });
+const serialPort = new SerialPort({ path: "COM3", baudRate: 115200 });
 
 let SFP = [0xaa];
 let ACK = 0x55;
@@ -18,7 +18,7 @@ let stopTransmission = false;
 serialPort.on("open", function () {
   console.log("Serial port opened");
 
-  // Start transmitting a single byte every 10ms
+  console.log("Start synch...");
   transmissionInterval = setInterval(() => {
     if (!stopTransmission) {
       serialPort.write(Buffer.from(SFP));
@@ -27,12 +27,12 @@ serialPort.on("open", function () {
 });
 
 serialPort.on("data", function (data) {
-  console.log("Received from serial port:", data.toString());
-  // Check if the received byte matches the specific byte to stop transmission
+  //console.log("Received from serial port:", data.toString());
+  //Check if the received byte matches the specific byte to stop transmission
   if (data[0] === ACK) {
     stopTransmission = true;
     clearInterval(transmissionInterval);
-    console.log("Transmission stopped");
+    console.log("Synchronized with remote.");
   }
 });
 
