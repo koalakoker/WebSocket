@@ -1,2 +1,5 @@
-/node_modules
-/package-lock.json
+node_modules
+package-lock.json
+Serial2/.settings
+Serial2/Debug
+Serial2/Serial2.launch
