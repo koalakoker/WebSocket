@@ -16,6 +16,7 @@ let ACKSZ = 0x66;
 let transmissionInterval;
 let stopTransmission = false;
 let synchronized = false;
+let messageToBeTransmitted;
 
 serialPort.on("open", function () {
   console.log("Serial port opened");
@@ -42,6 +43,7 @@ serialPort.on("data", function (data) {
     // Receiving while synchronized
     if (data[0] === ACKSZ) {
       console.log("ACKSZ received");
+      serialPort.write(messageToBeTransmitted);
     }
   }
 });
@@ -73,6 +75,7 @@ wss.on("connection", function connection(ws) {
       let { highByte, lowByte } = splitHighAndLow(message);
       console.log(highByte, lowByte);
       serialPort.write(Buffer.from([lowByte, highByte]));
+      messageToBeTransmitted = message;
     } else {
       console.log("Message received while not syncronized with the remote");
     }

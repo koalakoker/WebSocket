@@ -54,6 +54,7 @@ comState_t comState = COMSTATE_SYNCH;
 uint8_t rxBuff[255];
 uint8_t txAck[1] = { 0x55 };
 uint8_t txAckSz[1] = { 0x66 };
+uint8_t txAckPl[1] = { 0x77 };
 uint16_t payloadLen = 0;
 /* USER CODE END PV */
 
@@ -83,11 +84,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			payloadLen = rxBuff[0] + (rxBuff[1] * 256);
 			HAL_UART_Transmit_IT(&huart2, txAckSz, 1);
 			comState = COMSTATE_PAYLOAD;
+			HAL_UART_Receive_IT(&huart2, rxBuff, payloadLen);
 		}
 		break;
 		case COMSTATE_PAYLOAD:
 		{
-
+			HAL_UART_Transmit_IT(&huart2, rxBuff, payloadLen);
+			comState = COMSTATE_SIZE;
+			HAL_UART_Receive_IT(&huart2, rxBuff, 2);
 		}
 		break;
 	}
