@@ -22,6 +22,8 @@ const COMSTATE_PAYLOAD = 2;
 let comState = COMSTATE_SYNCH;
 let messageToBeTransmitted;
 let expectedAck;
+let timeOutID;
+let timeOutDuration_ms = 1000;
 
 function splitHighAndLow(str) {
   // Check if the length of the string is less than 65536
@@ -46,7 +48,6 @@ function computePayloadAck(str) {
     console.log("String length exceeds the limit of 65536 characters.");
     return;
   }
-  console.log(str);
   let sum = 0;
   // Loop through each character in the string
   for (let i = 0; i < str.length; i++) {
@@ -62,9 +63,15 @@ function computePayloadAck(str) {
   return lowByte + highByte;
 }
 
+function timeOut() {
+  console.log("Time out. Synchronization with remote has been loosed.");
+  startSynch();
+}
+
 function startSynch() {
   console.log("Start synch...");
   comState = COMSTATE_SYNCH;
+  stopTransmission = false;
   transmissionInterval = setInterval(() => {
     if (!stopTransmission) {
       serialPort.write(Buffer.from(SFP));
@@ -87,6 +94,7 @@ serialPort.on("data", function (data) {
           clearInterval(transmissionInterval);
           console.log("Synchronized with remote.");
           comState = COMSTATE_SIZE;
+          timeOutID = setTimeout(timeOut, timeOutDuration_ms);
         }
       }
       break;
@@ -103,6 +111,8 @@ serialPort.on("data", function (data) {
       if (data[0] === expectedAck) {
         console.log("Payload ACK received");
         comState = COMSTATE_SIZE;
+        clearTimeout(timeOutID);
+        timeOutID = setTimeout(timeOut, timeOutDuration_ms);
       } else {
         console.log("Wrong ACK received");
         startSynch();
@@ -127,11 +137,9 @@ wss.on("connection", function connection(ws) {
       case COMSTATE_SIZE:
         {
           let { highByte, lowByte } = splitHighAndLow(message);
-          console.log(highByte, lowByte);
           serialPort.write(Buffer.from([lowByte, highByte]));
           messageToBeTransmitted = message;
           expectedAck = computePayloadAck(message.toString("utf8"));
-          console.log("Expected ack:" + expectedAck);
         }
         break;
       default:

@@ -57,6 +57,8 @@ uint8_t txAckSz[1] = { 0x66 };
 uint8_t txAckPl[1];
 
 uint16_t payloadLen = 0;
+uint32_t tk = 0, lastTk = 0;
+uint32_t timeOut_ms = 1000;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -88,6 +90,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 				HAL_UART_Transmit_IT(&huart2, txAck, 1);
 				comState = COMSTATE_SIZE;
 				HAL_UART_Receive_IT(&huart2, rxBuff, 2);
+				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+				lastTk = HAL_GetTick();
 			}
 		}
 		break;
@@ -105,6 +109,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			HAL_UART_Transmit_IT(&huart2, txAckPl, 1);
 			comState = COMSTATE_SIZE;
 			HAL_UART_Receive_IT(&huart2, rxBuff, 2);
+			lastTk = HAL_GetTick();
 		}
 		break;
 	}
@@ -146,6 +151,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   comState = COMSTATE_SYNCH;
   HAL_UART_Receive_IT(&huart2, rxBuff, 1);
+  lastTk = HAL_GetTick();
 
   /* USER CODE END 2 */
 
@@ -153,6 +159,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  tk = HAL_GetTick();
+	  if (tk > lastTk + timeOut_ms) {
+		  comState = COMSTATE_SYNCH;
+		  HAL_UART_Receive_IT(&huart2, rxBuff, 1);
+		  lastTk = HAL_GetTick();
+		  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
