@@ -62,15 +62,20 @@ function computePayloadAck(str) {
   return lowByte + highByte;
 }
 
-serialPort.on("open", function () {
-  console.log("Serial port opened");
-
+function startSynch() {
   console.log("Start synch...");
+  comState = COMSTATE_SYNCH;
   transmissionInterval = setInterval(() => {
     if (!stopTransmission) {
       serialPort.write(Buffer.from(SFP));
     }
   }, 10);
+}
+
+serialPort.on("open", function () {
+  console.log("Serial port opened");
+
+  startSynch();
 });
 
 serialPort.on("data", function (data) {
@@ -98,6 +103,9 @@ serialPort.on("data", function (data) {
       if (data[0] === expectedAck) {
         console.log("Payload ACK received");
         comState = COMSTATE_SIZE;
+      } else {
+        console.log("Wrong ACK received");
+        startSynch();
       }
     }
     default:

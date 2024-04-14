@@ -15,6 +15,5 @@ function sendMessage() {
   const message = messageInput.value.trim();
   if (message !== "") {
     socket.send(message);
-    messageInput.value = "";
   }
 }
