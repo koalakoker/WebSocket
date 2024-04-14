@@ -45,13 +45,16 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 typedef enum {
 	COMSTATE_SYNCH,
-	COMSTATE_RUN
+	COMSTATE_SIZE,
+	COMSTATE_PAYLOAD
 } comState_t;
 
 
 comState_t comState = COMSTATE_SYNCH;
 uint8_t rxBuff[255];
 uint8_t txAck[1] = { 0x55 };
+uint8_t txAckSz[1] = { 0x66 };
+uint16_t payloadLen = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,12 +71,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	switch (comState) {
 		case COMSTATE_SYNCH:
 		{
-			HAL_UART_Transmit_IT(&huart2, txAck, 1);
-			comState = COMSTATE_RUN;
-			HAL_UART_Receive_IT(&huart2, rxBuff, 1);
+			if (rxBuff[0] == 0xaa) {
+				HAL_UART_Transmit_IT(&huart2, txAck, 1);
+				comState = COMSTATE_SIZE;
+				HAL_UART_Receive_IT(&huart2, rxBuff, 2);
+			}
 		}
 		break;
-		case COMSTATE_RUN:
+		case COMSTATE_SIZE:
+		{
+			payloadLen = rxBuff[0] + (rxBuff[1] * 256);
+			HAL_UART_Transmit_IT(&huart2, txAckSz, 1);
+			comState = COMSTATE_PAYLOAD;
+		}
+		break;
+		case COMSTATE_PAYLOAD:
 		{
 
 		}
