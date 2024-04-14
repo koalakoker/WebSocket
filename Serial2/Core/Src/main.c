@@ -54,7 +54,8 @@ comState_t comState = COMSTATE_SYNCH;
 uint8_t rxBuff[255];
 uint8_t txAck[1] = { 0x55 };
 uint8_t txAckSz[1] = { 0x66 };
-uint8_t txAckPl[1] = { 0x77 };
+uint8_t txAckPl[1];
+
 uint16_t payloadLen = 0;
 /* USER CODE END PV */
 
@@ -68,6 +69,17 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint8_t computeAck(uint8_t* buff, uint16_t len) {
+	uint32_t sum = 0;
+	for (uint8_t i = 0; i < len; i++) {
+		sum += buff[i];
+	}
+	sum = sum & 0xffff;
+	uint8_t lowByte = sum & 0xff; // Extract the low byte
+	uint8_t highByte = (sum >> 8) & 0xff; // Extract the high byte
+	return lowByte + highByte;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	switch (comState) {
 		case COMSTATE_SYNCH:
@@ -89,7 +101,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		break;
 		case COMSTATE_PAYLOAD:
 		{
-			HAL_UART_Transmit_IT(&huart2, rxBuff, payloadLen);
+			txAckPl[0] = computeAck(rxBuff, payloadLen);
+			HAL_UART_Transmit_IT(&huart2, txAckPl, 1);
 			comState = COMSTATE_SIZE;
 			HAL_UART_Receive_IT(&huart2, rxBuff, 2);
 		}
