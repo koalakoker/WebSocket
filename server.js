@@ -65,7 +65,7 @@ function computePayloadAck(array) {
   // Compute the low significant byte and the high significant byte
   let lowByte = sum & 0xff; // Extract the low byte
   let highByte = (sum >> 8) & 0xff; // Extract the high byte
-  return lowByte + highByte;
+  return (lowByte + highByte) % 0x100;
 }
 
 function timeOut() {
@@ -122,7 +122,7 @@ serialPort.on("data", function (data) {
         console.log(
           "Wrong ACK received. Expected:",
           expectedAck,
-          " receiced: ",
+          " received: ",
           data[0]
         );
         startSynch();
@@ -137,9 +137,14 @@ wss.on("connection", function connection(ws) {
   console.log("Client connected");
 
   ws.on("message", function incoming(message) {
-    console.log("Received from client:", message);
+    console.log("Received from client:", message, " state:", comState);
     switch (comState) {
       case COMSTATE_SYNCH:
+        {
+          console.log("Message received while not syncronized with the remote");
+        }
+        break;
+      case COMSTATE_PAYLOAD:
         {
           console.log("Message received while not syncronized with the remote");
         }
@@ -153,6 +158,9 @@ wss.on("connection", function connection(ws) {
         }
         break;
       default:
+        {
+          console.log("Message received while not syncronized with the remote");
+        }
         break;
     }
   });
