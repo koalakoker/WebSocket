@@ -82,6 +82,32 @@ uint8_t computeAck(uint8_t* buff, uint16_t len) {
 	return lowByte + highByte;
 }
 
+typedef struct
+{
+	uint16_t ARR;
+	uint8_t countingMode;
+	uint16_t CCR1;
+	uint8_t mode1;
+	uint16_t CCR2;
+	uint8_t mode2;
+	uint16_t CCR3;
+	uint8_t mode3;
+} rxData_t;
+
+uint16_t ARR;
+uint8_t countingMode;
+uint16_t CCR1;
+uint8_t mode1;
+uint16_t CCR2;
+uint8_t mode2;
+uint16_t CCR3;
+uint8_t mode3;
+
+void decode(uint8_t* rx) {
+	rxData_t* pRX = (rxData_t*)rx;
+	ARR = pRX->ARR;
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	switch (comState) {
 		case COMSTATE_SYNCH:
@@ -110,6 +136,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			comState = COMSTATE_SIZE;
 			HAL_UART_Receive_IT(&huart2, rxBuff, 2);
 			lastTk = HAL_GetTick();
+			decode(rxBuff);
 		}
 		break;
 	}

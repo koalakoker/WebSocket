@@ -47,17 +47,17 @@ function splitHighAndLow(str) {
   return { highByte: highByte, lowByte: lowByte };
 }
 
-function computePayloadAck(str) {
+function computePayloadAck(array) {
   // Check if the length of the string is less than 65536
-  if (str.length >= 65536) {
+  if (array.length >= 65536) {
     console.log("String length exceeds the limit of 65536 characters.");
     return;
   }
   let sum = 0;
   // Loop through each character in the string
-  for (let i = 0; i < str.length; i++) {
+  for (let i = 0; i < array.length; i++) {
     // Get the character code (byte value) of the current character
-    let charCode = str.charCodeAt(i);
+    let charCode = array[i];
     // Add the character code to the sum
     sum += charCode;
   }
@@ -119,7 +119,12 @@ serialPort.on("data", function (data) {
         clearTimeout(timeOutID);
         timeOutID = setTimeout(timeOut, timeOutDuration_ms);
       } else {
-        console.log("Wrong ACK received");
+        console.log(
+          "Wrong ACK received. Expected:",
+          expectedAck,
+          " receiced: ",
+          data[0]
+        );
         startSynch();
       }
     }
@@ -144,7 +149,7 @@ wss.on("connection", function connection(ws) {
           let { highByte, lowByte } = splitHighAndLow(message);
           serialPort.write(Buffer.from([lowByte, highByte]));
           messageToBeTransmitted = message;
-          expectedAck = computePayloadAck(message.toString("utf8"));
+          expectedAck = computePayloadAck(message);
         }
         break;
       default:
