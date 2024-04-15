@@ -40,6 +40,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -65,6 +67,7 @@ uint32_t timeOut_ms = 1000;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -82,18 +85,6 @@ uint8_t computeAck(uint8_t* buff, uint16_t len) {
 	return lowByte + highByte;
 }
 
-typedef struct
-{
-	uint16_t ARR;
-	uint8_t countingMode;
-	uint16_t CCR1;
-	uint8_t mode1;
-	uint16_t CCR2;
-	uint8_t mode2;
-	uint16_t CCR3;
-	uint8_t mode3;
-} rxData_t;
-
 uint16_t ARR;
 uint8_t countingMode;
 uint16_t CCR1;
@@ -103,9 +94,79 @@ uint8_t mode2;
 uint16_t CCR3;
 uint8_t mode3;
 
-void decode(uint8_t* rx) {
-	rxData_t* pRX = (rxData_t*)rx;
-	ARR = pRX->ARR;
+void setCountingMode(uint8_t countingMode) {
+	uint32_t tmpcr1 = TIM1->CR1;
+	if (countingMode == 0) {
+		tmpcr1 &= ~(TIM_CR1_DIR | TIM_CR1_CMS);
+		tmpcr1 |= TIM_COUNTERMODE_UP;
+	}
+	if (countingMode == 1) {
+		tmpcr1 &= ~(TIM_CR1_DIR | TIM_CR1_CMS);
+		tmpcr1 |= TIM_COUNTERMODE_DOWN;
+	}
+	if (countingMode == 2) {
+		tmpcr1 &= ~(TIM_CR1_DIR | TIM_CR1_CMS);
+		tmpcr1 |= TIM_COUNTERMODE_CENTERALIGNED1;
+	}
+	TIM1->CR1 = tmpcr1;
+}
+
+void setCompareMode(uint8_t mode, uint8_t channel) {
+	uint32_t tmpccmrx;
+	uint32_t pwmMode;
+	if (mode == 0) {
+		pwmMode = TIM_OCMODE_PWM1;
+	} else {
+		pwmMode = TIM_OCMODE_PWM2;
+	}
+	if (channel == 1) {
+		tmpccmrx = TIM1->CCMR1;
+		tmpccmrx &= ~TIM_CCMR1_OC1M;
+		tmpccmrx |= pwmMode;
+		TIM1->CCMR1 = tmpccmrx;
+	}
+	if (channel == 2) {
+		tmpccmrx = TIM1->CCMR1;
+		tmpccmrx &= ~TIM_CCMR1_OC2M;
+		tmpccmrx &= ~TIM_CCMR1_CC2S;
+		tmpccmrx |= (pwmMode << 8U);
+		TIM1->CCMR1 = tmpccmrx;
+	}
+	if (channel == 3) {
+		tmpccmrx = TIM1->CCMR2;
+		tmpccmrx &= ~TIM_CCMR2_OC3M;
+		tmpccmrx &= ~TIM_CCMR2_CC3S;
+		tmpccmrx |= pwmMode;
+		TIM1->CCMR2 = tmpccmrx;
+	}
+}
+
+void decode(uint8_t *rx) {
+	ARR = (rx[1] >> 8) + rx[0];
+	TIM1->ARR = ARR;
+
+	if (countingMode != rx[2]) {
+		countingMode = rx[2];
+		setCountingMode(countingMode);
+	}
+
+	CCR1 = (rx[4] >> 8) + rx[3];
+	TIM1->CCR1 = CCR1;
+
+	mode1 = rx[5];
+	setCompareMode(mode1, 1);
+
+	CCR2 = (rx[7] >> 8) + rx[6];
+	TIM1->CCR2 = CCR2;
+
+	mode1 = rx[8];
+	setCompareMode(mode2, 2);
+
+	CCR3 = (rx[10] >> 8) + rx[9];
+	TIM1->CCR3 = CCR3;
+
+	mode1 = rx[11];
+	setCompareMode(mode3, 3);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
@@ -175,7 +236,12 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+
   comState = COMSTATE_SYNCH;
   HAL_UART_Receive_IT(&huart2, rxBuff, 1);
   lastTk = HAL_GetTick();
@@ -188,6 +254,7 @@ int main(void)
   {
 	  tk = HAL_GetTick();
 	  if (tk > lastTk + timeOut_ms) {
+		  HAL_UART_AbortReceive(&huart2);
 		  comState = COMSTATE_SYNCH;
 		  HAL_UART_Receive_IT(&huart2, rxBuff, 1);
 		  lastTk = HAL_GetTick();
@@ -244,6 +311,96 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 0;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 186;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 46;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.BreakFilter = 0;
+  sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
+  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
+  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
+  sBreakDeadTimeConfig.Break2Filter = 0;
+  sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
+
 }
 
 /**

@@ -3,3 +3,5 @@ package-lock.json
 Serial2/.settings
 Serial2/Debug
 Serial2/Serial2.launch
+.mxproject
+Serial2 Debug.launch
