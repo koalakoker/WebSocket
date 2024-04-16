@@ -1,4 +1,3 @@
-// app.js
 const socket = new WebSocket("ws://localhost:3000");
 let optionButtons = document.getElementsByName("state");
 optionButtons.forEach((button) => {
@@ -23,8 +22,6 @@ socket.onopen = function () {
     sendMessage();
   }, 500);
 };
-
-socket.onmessage = function (event) {};
 
 function sendMessage() {
   socket.send(createPacket());
