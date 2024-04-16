@@ -106,15 +106,21 @@ serialPort.on("data", function (data) {
     case COMSTATE_SIZE:
       {
         if (data[0] === ACKSZ) {
-          console.log("ACKSZ received");
-          serialPort.write(messageToBeTransmitted);
+          //console.log("ACKSZ received");
+          try {
+            serialPort.write(messageToBeTransmitted);
+          } catch (error) {
+            console.log(error);
+            console.log(messageToBeTransmitted);
+          }
+
           comState = COMSTATE_PAYLOAD;
         }
       }
       break;
     case COMSTATE_PAYLOAD: {
       if (data[0] === expectedAck) {
-        console.log("Payload ACK received");
+        //console.log("Payload ACK received");
         comState = COMSTATE_SIZE;
         clearTimeout(timeOutID);
         timeOutID = setTimeout(timeOut, timeOutDuration_ms);
@@ -137,7 +143,7 @@ wss.on("connection", function connection(ws) {
   console.log("Client connected");
 
   ws.on("message", function incoming(message) {
-    console.log("Received from client:", message, " state:", comState);
+    //console.log("Received from client:", message, " state:", comState);
     switch (comState) {
       case COMSTATE_SYNCH:
         {
